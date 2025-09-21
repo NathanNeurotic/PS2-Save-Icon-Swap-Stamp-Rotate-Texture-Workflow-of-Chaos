@@ -1,4 +1,4 @@
-# PS2 Save Icon Swap/Stamp/Rotate Texture Workflow of Chaos — **Clear, End-to-End Guide**
+# PS2 Save Icon Toolchain — **Clear, End-to-End Guide**
 
 > **Goal:** start with base PS2 icon models (`.icn`) and textures, stamp/skin them, optionally create transform variants (FlipY/rotations), optionally round-trip in Blender/MilkShape — no guesswork.
 
@@ -72,16 +72,22 @@ You now have final `.icn` files ready for your PS2 save folder.
 
 ```mermaid
 flowchart LR
-    A[Base BMP/PNG<br/>copy/del/delete/list] --> B[Stamp textures<br/>(doubleclick-stamper.bat)]
-    B --> C[out_stamped/*.bmp]
-    C --> D[Inject textures into ICNs<br/>(icn_texture_replace.py)]
-    D --> E[Generate variants<br/>(Make_ICN_Candidates_All_Transforms.bat)]
-    E -->|need FlipY| F[Bulk pick FlipY<br/>(Rename_FlipY_ICN_All_Subfolders.bat)]
-    E -->|no FlipY needed| G[Select best variant]
-    F --> H[Finalize ICNs]
-    G --> H[Finalize ICNs]
-    H -. optional .-> K[Round-trip ICN<->OBJ<br/>(ps2icon_to_obj / obj_to_ps2icon)]
-    K --> D
+A[Base BMP/PNG
+copy/del/delete/list] --> B[Stamp textures
+(doubleclick-stamper.bat)]
+B --> C[out_stamped/*.bmp]
+C --> D[Inject textures into ICNs
+(icn_texture_replace.py)]
+D --> E[Generate variants
+(Make_ICN_Candidates_All_Transforms.bat)]
+E -->|need FlipY| F[Bulk pick FlipY
+(Rename_FlipY_ICN_All_Subfolders.bat)]
+E -->|No FlipY needed| G[Select best variant]
+F --> H[Finalize ICNs]
+G --> H[Finalize ICNs]
+H -. optional .-> K[Round-trip ICNs <-> OBJ
+(ps2icon_to_obj / obj_to_ps2icon)]
+K --> D
 ```
 
 ---
