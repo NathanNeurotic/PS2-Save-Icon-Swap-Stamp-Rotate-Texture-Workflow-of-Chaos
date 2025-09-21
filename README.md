@@ -1,230 +1,126 @@
-# PS2 Save Icon Toolchain — **Clear, End-to-End Guide**
+# PS2 Save Icon Workflow
 
-> **Goal:** start with base PS2 icon models (`.icn`) and textures, stamp/skin them, optionally create transform variants (FlipY/rotations), optionally round-trip in Blender/MilkShape — no guesswork.
-
----
-
-## 0) Requirements (one-time)
-
-- **Windows 10+**
-- **Python 3.9+** on PATH  
-  Install Pillow:
-  ```bat
-  pip install pillow
-  ```
+This repository provides a **clear, step-by-step workflow** for taking base PS2 save icon models (`.icn`) and textures, stamping or skinning them, generating transform variants, and finalizing them for deployment — all in an **easy-to-follow pipeline**.
 
 ---
 
-## 1) Repository layout (required + created)
+## 1) Prerequisites
+
+You will need the following installed or available in your PATH:
+- **Python 3.9+**
+- **Pillow** (Python Imaging Library fork) → install with:
+```bash
+pip install pillow
+```
+- **Blender** *(optional)* for manual UV editing or remapping.
+
+---
+
+## 2) Repository Layout
 
 ```
-<repo-root>\
-│  README.md
-│  box.txt                         # stamp area; 4 integers: x0 y0 x1 y1
-│  doubleclick-stamper.bat         # easiest way to stamp or texture-swap
-│  Make_ICN_Candidates_All_Transforms.bat
-│  Rename_FlipY_ICN_All_Subfolders.bat
-│  ps2icon_to_obj.exe
-│  obj_to_ps2icon.exe
-│  stamp_like_example.py
-│  icn_texture_replace.py          # texture injector (keeps geometry/UVs)
-│  transforms.cfg                  # which variants the “Make_*” script builds
-│
-│  copy.bmp  del.bmp  delete.bmp  list.bmp   # base textures (replace with yours)
-│  copy.icn  del.icn  list.icn               # example ICNs (yours may live in subfolders)
-│
-├─ICONS\                            # (recommended) your project ICNs live here (any subfolder layout)
-│   ├─APP_Example\
-│   │    copy.icn  del.icn  list.icn
-│   └─... (more)
-│
-├─out_stamped\                      # (created) stamped textures land here
-└─CANDIDATES\                       # (created) transform variants (or next to sources, depending on bat)
+repo-root/
+├── copy.bmp / copy.png
+├── del.bmp / del.png
+├── delete.bmp / delete.png
+├── list.bmp / list.png
+├── box.txt
+├── transforms.cfg
+├── doubleclick-stamper.bat
+├── Make_ICN_Candidates_All_Transforms.bat
+├── Rename_FlipY_ICN_All_Subfolders.bat
+├── icn_texture_replace.py
+├── stamp_like_example.py
+├── ps2icon_to_obj.exe
+├── obj_to_ps2icon.exe
+└── icn_files/ (your working ICNs go here)
 ```
+
+> **Tip:** Keep your working `.icn` files inside `icn_files/` so you can cleanly batch-process without affecting the repo itself.
 
 ---
 
-## 2) One-screen quick start (most users only need this)
-
-> Run from the repo root. If your paths contain spaces, keep the quotes.
-
-```bat
-REM 1) Stamp (or texture-only with a single space)
-doubleclick-stamper.bat "DVR"
-REM or
-doubleclick-stamper.bat " "
-
-REM 2) Inject stamped textures into all ICNs (current + subfolders)
-python icn_texture_replace.py
-
-REM 3) Generate transform candidates per transforms.cfg
-Make_ICN_Candidates_All_Transforms.bat
-
-REM 4) Auto-select FlipY variant in bulk (if needed)
-Rename_FlipY_ICN_All_Subfolders.bat
-```
-
-You now have final `.icn` files ready for your PS2 save folder.
-
----
-
-## 3) Visual flow (Mermaid)
+## 3) Visual Workflow
 
 ```mermaid
 flowchart LR
-A[Base BMP/PNG
-copy/del/delete/list] --> B[Stamp textures
-(doubleclick-stamper.bat)]
-B --> C[out_stamped/*.bmp]
-C --> D[Inject textures into ICNs
-(icn_texture_replace.py)]
-D --> E[Generate variants
-(Make_ICN_Candidates_All_Transforms.bat)]
-E -->|need FlipY| F[Bulk pick FlipY
-(Rename_FlipY_ICN_All_Subfolders.bat)]
-E -->|No FlipY needed| G[Select best variant]
-F --> H[Finalize ICNs]
-G --> H[Finalize ICNs]
-H -. optional .-> K[Round-trip ICNs <-> OBJ
-(ps2icon_to_obj / obj_to_ps2icon)]
-K --> D
+    A[Base BMP/PNG: copy/del/delete/list] --> B[Stamp textures]
+    B --> C[out_stamped/*.bmp]
+    C --> D[Inject into ICNs]
+    D --> E[Generate variants]
+    E -->|FlipY needed| F[Bulk FlipY]
+    E -->|No FlipY| G[Select best variant]
+    F --> H[Finalize ICNs]
+    G --> H[Finalize ICNs]
+    H --> I[Optional: Round-trip ICN <-> OBJ]
+    I --> D
 ```
+
+### Step Legend
+
+| Step | Description |
+|------|-------------|
+| **A** | Place your `copy.bmp`, `del.bmp`, `delete.bmp`, `list.bmp` (or PNG) into the root. |
+| **B** | Run `doubleclick-stamper.bat` (use ` ` when prompted to skip text stamping). |
+| **C** | The processed textures appear under `out_stamped/`. |
+| **D** | Use `icn_texture_replace.py` to inject the stamped textures into ICNs. |
+| **E** | Run `Make_ICN_Candidates_All_Transforms.bat` to generate transform variants. |
+| **F** | If needed, run `Rename_FlipY_ICN_All_Subfolders.bat` to fix Y-flip. |
+| **G** | Manually pick the best variant if no FlipY needed. |
+| **H** | Finalize icons by selecting the desired ICN files. |
+| **I** | (Optional) Convert ICNs to OBJ and back for manual remapping. |
 
 ---
 
-## 4) Batch files — what they do (no surprises)
+## 4) Batch Files — What They Do
 
-- **`doubleclick-stamper.bat`**  
-  Runs the stamper over the base textures.
-  - **Label:** pass the text you want (e.g., `"DVR"`).  
-  - **Texture-only:** pass a **single space** (`" "`).
-  - **Input:** `copy.bmp`, `del.bmp`, `delete.bmp`, `list.bmp`.  
-  - **Output:** `out_stamped\*.bmp`.
-
-- **`Make_ICN_Candidates_All_Transforms.bat`**  
-  Generates **rotated/flipped/scaled** variants for every `.icn` found.  
-  Reads `transforms.cfg`. Produces files with clear suffixes (e.g., `_FlipY`, `_rot90`) either under `CANDIDATES\` or alongside sources (depends on your batch’s implementation).
-
-- **`Rename_FlipY_ICN_All_Subfolders.bat`**  
-  Convenience rename to **select the `_FlipY` variant** across all subfolders so the canonical filename points at FlipY.  
-  No UV math — purely filename selection.
+| File | Purpose |
+|------|---------|
+| **doubleclick-stamper.bat** | Prompts for optional text, stamps the images, writes output to `out_stamped/`. |
+| **Make_ICN_Candidates_All_Transforms.bat** | Automatically generates rotated/flipped variants of your ICNs for testing. |
+| **Rename_FlipY_ICN_All_Subfolders.bat** | Mass-renames FlipY variants so they are selected automatically by wLE or other loaders. |
 
 ---
 
-## 5) Stamping details (the “box”)
+## 5) Python Scripts
 
-- **`box.txt`**: four integers:
-  ```
-  x0 y0 x1 y1
-  ```
-  Example:
-  ```
-  0 0 128 128
-  ```
-
-- **Fixed box run:**
-  ```bat
-  python stamp_like_example.py --box-file box.txt --text DVR --images copy.bmp del.bmp list.bmp
-  ```
-
-- **Auto-infer box from a “blank” and “texted” example, then save it:**
-  ```bat
-  python stamp_like_example.py --infer BLANK.png EXAMPLE.png --infer-pad 4 --save-box box.txt
-  ```
-
-- Handy flags: `--fit-min`, `--fit-max`, `--h-align`, `--v-align`, `--stroke`, `--stroke-width`,  
-  `--box-shift-x`, `--box-shift-y`, `--box-inset`, `--output-dir` (defaults to `out_stamped`).
+| Script | Purpose |
+|--------|---------|
+| **icn_texture_replace.py** | Injects new textures into `.icn` files without altering geometry. |
+| **stamp_like_example.py** | Demonstrates stamping workflow in pure Python for automation or headless environments. |
 
 ---
 
-## 6) Texture injection (non-destructive)
+## 6) Optional Tooling
 
-```bat
-python icn_texture_replace.py
-```
-
-- Finds stamped bitmaps (`out_stamped\...`) and updates matching ICNs in **current folder + subfolders**.  
-  Match rule: name stem (`copy_*.bmp → copy.icn`, etc.).  
-- Geometry + UVs are preserved.
-
-**Naming guideline** (so replacement “just works”):
-- `copy*.bmp` ↔ `copy.icn`
-- `del*.bmp`  ↔ `del.icn`
-- `list*.bmp` ↔ `list.icn`
-
-Add more icons by following the same pattern.
+| Tool | Purpose |
+|------|---------|
+| **ps2icon_to_obj.exe** | Converts `.icn` to `.obj` for editing in Blender/Milkshape. |
+| **obj_to_ps2icon.exe** | Converts edited `.obj` back into `.icn` for testing. |
 
 ---
 
-## 7) Round-trip for manual UV/mesh edits (optional)
+## 7) Example Full Workflow
 
-1) ICN → OBJ/MTL:
-```bat
-ps2icon_to_obj.exe ".\ICONS\YourApp\list.icn"
-```
-2) Edit in Blender/MilkShape.  
-3) OBJ → ICN:
-```bat
-obj_to_ps2icon.exe ".\ICONS\YourApp\list.obj"
-```
-
-Then re-run **texture injection** if you changed textures later.
+1. Place base textures (`copy.bmp`, `del.bmp`, `list.bmp`, etc.) in repo root.
+2. Run `doubleclick-stamper.bat` → creates `out_stamped/*.bmp`.
+3. Run `icn_texture_replace.py` to inject textures into working `.icn` files in `icn_files/`.
+4. Run `Make_ICN_Candidates_All_Transforms.bat` to generate rotation/flip variants.
+5. If needed, run `Rename_FlipY_ICN_All_Subfolders.bat`.
+6. Manually select best candidates from generated folders.
+7. (Optional) Convert ICNs to OBJ with `ps2icon_to_obj.exe`, edit UVs in Blender, then convert back with `obj_to_ps2icon.exe`.
+8. Copy finalized `.icn` files into your PS2 save folder for deployment.
 
 ---
 
-## 8) Example config template
+## 8) Notes & Tips
 
-**`transforms.cfg` (example)**
-```
-# rotations are degrees; set what you actually use
-rotate=0,90,180,270
-flipX=no
-flipY=yes
-scale=1.0
-```
+- **Order matters:** Always stamp & replace textures *before* generating transform candidates.
+- **Non-destructive:** This pipeline never deletes your originals; always works from copies.
+- **OBJ round-tripping:** Only needed if vertex UVs are broken or you need manual re-map.
 
 ---
 
-## 9) Troubleshooting
+## License
 
-- **Texture upside-down** → Generate candidates, then run `Rename_FlipY_ICN_All_Subfolders.bat` to automatically select the FlipY file.  
-- **No visible change after stamping** → verify `out_stamped\` has your stamped files. Then run the injector from the **repo root** so it sees subfolders.  
-- **Nothing injected** → ensure base names match (e.g., `copy_*.bmp` ↔ `copy.icn`).  
-- **OBJ import looks tiny or scattered** → that’s DCC/format scale/axis, not stamping. Fix in Blender/MilkShape; reconvert to ICN; re-inject textures.
-
----
-
-## 10) What to commit vs generate
-
-**Commit these (source of truth):**
-- `README.md`
-- `doubleclick-stamper.bat`
-- `Make_ICN_Candidates_All_Transforms.bat`
-- `Rename_FlipY_ICN_All_Subfolders.bat`
-- `ps2icon_to_obj.exe`
-- `obj_to_ps2icon.exe`
-- `stamp_like_example.py`
-- `icn_texture_replace.py`
-- `box.txt`
-- `transforms.cfg`
-- Base textures you want to ship: `copy.bmp`, `del.bmp`, `delete.bmp`, `list.bmp`
-- Any sample/example `.icn` you want in the repo (optional but useful): `copy.icn`, `del.icn`, `list.icn`
-
-**Do NOT commit (generated / build artifacts):**
-- `out_stamped/`
-- `CANDIDATES/`
-- Re-built `.icn` variants (unless you purposely track them)
-- `.obj` / `.mtl` export results
-- Logs and temps
-
-**Suggested `.gitignore`:**
-```
-/out_stamped/
-/CANDIDATES/
-/*.obj
-/*.mtl
-/*.log
-/*.tmp
-```
-
----
+MIT License — feel free to fork and improve this workflow.
